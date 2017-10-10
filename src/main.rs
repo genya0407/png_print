@@ -21,6 +21,7 @@ fn main() {
 
 fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<PNG, Box<Error>> {
     let mut ihdr_opt = None;
+    let mut iend_opt = None;
     let mut plte_opt = None;
     let mut idats = Vec::new();
     let mut others = Vec::new();
@@ -35,6 +36,9 @@ fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<PNG, Box<Error>> {
             "IDAT" => {
                 idats.push(chunk.to_idat());
             }
+            "IEND" => {
+                iend_opt = Some(chunk.to_iend());
+            }
             _ => {
                 others.push(chunk)
             }
@@ -44,7 +48,7 @@ fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<PNG, Box<Error>> {
         ihdr: ihdr_opt.ok_or(InvalidPngFileError::new("IHDR".to_string()))?,
         plte_opt: plte_opt,
         idats: idats,
-        iend: IEND {},
+        iend: iend_opt.ok_or(InvalidPngFileError::new("IEND".to_string()))?,
         others: others,
     };
     Ok(png)

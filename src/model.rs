@@ -104,6 +104,11 @@ impl IDAT {
 }
 #[derive(Debug)]
 pub struct IEND {}
+impl IEND {
+    pub fn new() -> Self {
+        IEND {}
+    }
+}
 
 #[derive(Debug)]
 pub struct GeneralChunk {
@@ -122,7 +127,7 @@ impl GeneralChunk {
     }
 
     pub fn to_iend(self) -> IEND {
-        IEND {}
+        IEND::new()
     }
 
     pub fn to_plte(self) -> PLTE {
