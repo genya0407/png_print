@@ -7,3 +7,4 @@ authors = ["Yusuke Sangenya <longinus.eva@gmail.com>"]
 byteorder = "1.1.0"
 deflate = "0.7.17"
 inflate = "0.3.3"
+ansi_term = "0.10.2"

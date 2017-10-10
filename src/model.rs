@@ -35,6 +35,25 @@ pub struct Png {
     pub iend: Iend,
     pub others: Vec<GeneralChunk>
 }
+impl Png {
+    pub fn decompress(&self) -> Result<Vec<u8>, String> {
+        let mut concatenated_data = Vec::new();
+        for idat in self.idats.iter() {
+            concatenated_data.extend(idat.compressed_data.clone());
+        }
+        inflate_bytes(concatenated_data.as_slice())
+    }
+    
+    pub fn decompress_with_color(&self) -> Result<Vec<Box<IColor>>, String> {
+        let plte = self.plte_opt.clone().ok_or("PLTE chunk doesn't exist!")?;
+        let decompressed_bits = self.decompress()?;
+        let mut colors: Vec<Box<IColor>> = Vec::new();
+        for decompressed_bit in decompressed_bits {
+            colors.push(Box::new(plte.colors[decompressed_bit as usize].clone()));
+        }
+        Ok(colors)
+    }
+}
 
 #[derive(Debug)]
 pub struct Ihdr {
@@ -60,12 +79,23 @@ impl Ihdr {
     }
 }
 
-#[derive(Debug)]
+pub trait IColor {
+    fn red(&self) -> u8;
+    fn green(&self) -> u8;
+    fn blue(&self) -> u8;
+}
+#[derive(Debug, Clone)]
 pub struct PlteColor {
     pub red: u8,
     pub green: u8,
     pub blue: u8,
 }
+impl IColor for PlteColor {
+    fn red(&self)   -> u8 { self.red }
+    fn green(&self) -> u8 { self.green }
+    fn blue(&self)  -> u8 { self.blue }
+}
+#[derive(Clone)]
 pub struct Plte {
     pub colors: Vec<PlteColor>
 }
@@ -110,10 +140,6 @@ impl Idat {
             compressed_data: (&data_bytes[2..check_value_start_at]).to_vec(),
             check_value: (&data_bytes[check_value_start_at..]).read_u32::<BigEndian>().unwrap(),
         }
-    }
-
-    pub fn decompress(self) -> Result<Vec<u8>, String> {
-        inflate_bytes(self.compressed_data.as_slice())
     }
 }
 #[derive(Debug)]

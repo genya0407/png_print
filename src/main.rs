@@ -1,5 +1,6 @@
 extern crate byteorder;
 extern crate inflate;
+extern crate ansi_term;
 
 use std::error::Error;
 use std::fs::File;
@@ -10,16 +11,16 @@ use std::str;
 use byteorder::{BigEndian, ReadBytesExt};
 
 mod model;
+mod terminal;
 use model::*;
+use terminal::show_on_terminal;
 
 fn main() {
     let filename = args().nth(1).unwrap();
     let bytes = readfile(&filename).unwrap();
     let chunks = parse_to_chunks(bytes).unwrap();
-    let png = parse_to_png(chunks);
-    for idat in png.unwrap().idats {
-        println!("{:?}", idat.decompress());
-    }
+    let png = parse_to_png(chunks).unwrap();
+    show_on_terminal(png);
 }
 
 fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<Png, Box<Error>> {
