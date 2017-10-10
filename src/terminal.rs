@@ -8,7 +8,7 @@ pub fn show_on_terminal(png: Png) -> Result<(), String> {
     for h in 0..image.height {
         for w in 0..image.width {
             let color = &image.pixels[(h * image.width + w) as usize];
-            terminal_image += &format!("{}", RGB(color.red(), color.green(), color.blue()).paint("■"));
+            terminal_image += &format!("{}", RGB(color.red, color.green, color.blue).paint("■"));
         }
         terminal_image += "\n";
     }

@@ -27,31 +27,20 @@ impl error::Error for InvalidPngFileError {
     }
 }
 
-pub struct ImageColor {
-    pub red: u8,
-    pub green: u8,
-    pub blue: u8,
-}
-impl IColor for ImageColor {
-    fn red(&self)   -> u8 { self.red }
-    fn green(&self) -> u8 { self.green }
-    fn blue(&self)  -> u8 { self.blue }
-}
 pub struct Image {
     pub width: u32,
     pub height: u32,
-    pub pixels: Vec<Box<IColor>>,
+    pub pixels: Vec<Color>,
 }
 impl Image {
     pub fn half_half(&self) -> Self {
         let n = 2;
 
-        let mut new_pixels: Vec<Box<IColor>> = Vec::new();
+        let mut new_pixels: Vec<Color> = Vec::new();
         for h in (0..self.height).filter(|i| i % n == 0) {
             for w in (0..self.width).filter(|i| i % n == 0) {
                 let color = &self.pixels[(h * self.width + w) as usize];
-                let image_color = ImageColor { red: color.red(), green: color.green(), blue: color.blue() };
-                new_pixels.push(Box::new(image_color));
+                new_pixels.push(color.clone());
             }
         }
 
@@ -83,12 +72,12 @@ impl Png {
         inflate_bytes(concatenated_data.as_slice())
     }
     
-    fn decompress_with_color(&self) -> Result<Vec<Box<IColor>>, String> {
+    fn decompress_with_color(&self) -> Result<Vec<Color>, String> {
         let plte = self.plte_opt.clone().ok_or("PLTE chunk doesn't exist!")?;
         let decompressed_bits = self.decompress()?;
-        let mut colors: Vec<Box<IColor>> = Vec::new();
+        let mut colors: Vec<Color> = Vec::new();
         for decompressed_bit in decompressed_bits {
-            colors.push(Box::new(plte.colors[decompressed_bit as usize].clone()));
+            colors.push(plte.colors[decompressed_bit as usize].clone());
         }
         Ok(colors)
     }
@@ -124,25 +113,15 @@ impl Ihdr {
     }
 }
 
-pub trait IColor {
-    fn red(&self) -> u8;
-    fn green(&self) -> u8;
-    fn blue(&self) -> u8;
-}
 #[derive(Debug, Clone)]
-pub struct PlteColor {
+pub struct Color {
     pub red: u8,
     pub green: u8,
     pub blue: u8,
 }
-impl IColor for PlteColor {
-    fn red(&self)   -> u8 { self.red }
-    fn green(&self) -> u8 { self.green }
-    fn blue(&self)  -> u8 { self.blue }
-}
 #[derive(Clone)]
 pub struct Plte {
-    pub colors: Vec<PlteColor>
+    pub colors: Vec<Color>
 }
 impl fmt::Debug for Plte {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -153,7 +132,7 @@ impl Plte {
     pub fn new(chunk_data: &[u8]) -> Self {
         let mut colors = Vec::new();
         for base_index in 0..(chunk_data.len() / 3) {
-            let color = PlteColor {
+            let color = Color {
                 red:   chunk_data[base_index*3],
                 green: chunk_data[base_index*3+1],
                 blue:  chunk_data[base_index*3+2],
