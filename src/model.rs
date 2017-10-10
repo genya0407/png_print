@@ -1,6 +1,7 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use std::error;
 use std::fmt;
+use inflate::inflate_bytes;
 
 #[derive(Debug)]
 pub struct InvalidPngFileError {
@@ -89,16 +90,30 @@ impl Plte {
 }
 
 pub struct Idat {
-    data: Vec<u8>,
+    compression_method: u8,
+    additional_flags: u8,
+    compressed_data: Vec<u8>,
+    check_value: u32,
 }
 impl fmt::Debug for Idat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "IDAT: {} bytes.", self.data.len())
+        write!(f, "IDAT: {} bytes.", self.compressed_data.len())
     }
 }
 impl Idat {
-    pub fn new(data: Vec<u8>) -> Self {
-        Self { data: data }
+    pub fn new(data_bytes: Vec<u8>) -> Self {
+        let check_value_start_at = data_bytes.len() - 4;
+
+        Self {
+            compression_method: data_bytes[0],
+            additional_flags: data_bytes[1],
+            compressed_data: (&data_bytes[2..check_value_start_at]).to_vec(),
+            check_value: (&data_bytes[check_value_start_at..]).read_u32::<BigEndian>().unwrap(),
+        }
+    }
+
+    pub fn decompress(self) -> Result<Vec<u8>, String> {
+        inflate_bytes(self.compressed_data.as_slice())
     }
 }
 #[derive(Debug)]

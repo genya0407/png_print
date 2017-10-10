@@ -1,4 +1,5 @@
 extern crate byteorder;
+extern crate inflate;
 
 use std::error::Error;
 use std::fs::File;
@@ -16,7 +17,9 @@ fn main() {
     let bytes = readfile(&filename).unwrap();
     let chunks = parse_to_chunks(bytes).unwrap();
     let png = parse_to_png(chunks);
-    println!("{:?}", png);
+    for idat in png.unwrap().idats {
+        println!("{:?}", idat.decompress());
+    }
 }
 
 fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<Png, Box<Error>> {
