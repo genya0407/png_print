@@ -1,78 +1,90 @@
+extern crate byteorder;
+
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::env::args;
 use std::str;
+use byteorder::{BigEndian, ReadBytesExt};
 
 fn main() {
     let filename = args().nth(1).unwrap();
     let bytes = readfile(&filename).unwrap();
     let chunks = parse_to_chunks(bytes);
-    for c in chunks.unwrap() {
-        println!("{}", c.chunk_type());
-    }
 }
 
-trait IChunk {
-    //fn chunk_length(&self) -> u32;
-    fn chunk_type(&self) -> String;
-    //fn chunk_data(&self) -> &Vec<u8>;
-    //fn chunk_crc(&self) -> u32;
+struct PNG {
+    ihdr: IHDR,
+    idats: Vec<IDAT>,
+    iend: IEND,
+    others: Vec<GeneralChunk>
 }
+
+struct IDAT {}
+struct IEND {}
 
 #[derive(Debug)]
 struct GeneralChunk {
-    chunk_length: u32,
+    chunk_length: usize,
     chunk_type: String,
     chunk_data: Vec<u8>,
-    chunk_crc: [u8; 4],
+    chunk_crc: u32,
 }
 
-struct 
-
-impl IChunk for GeneralChunk {
-    fn chunk_type(&self) -> String {
-        self.chunk_type.clone()
+#[derive(Debug)]
+struct IHDR {
+    chunk_length:       usize,
+    chunk_crc:          u32,
+    width:              u32,
+    height:             u32,
+    bit_depth:          u8,
+    color_type:         u8,
+    compression_method: u8,
+    filter_method:      u8,
+    interlace_method:   u8,
+}
+impl IHDR {
+    pub fn new(chunk_length: usize, chunk_data: &[u8], chunk_crc: u32) -> Self {
+        Self {
+            chunk_length: chunk_length,
+            chunk_crc: chunk_crc,
+            width: (&chunk_data[0..4]).read_u32::<BigEndian>().unwrap(),
+            height: (&chunk_data[4..8]).read_u32::<BigEndian>().unwrap(),
+            bit_depth: chunk_data[8],
+            color_type: chunk_data[9],
+            compression_method: chunk_data[10],
+            filter_method: chunk_data[11],
+            interlace_method: chunk_data[12],
+        }
     }
 }
 
 const PNG_HEADER_SIZE: usize = 8;
-fn parse_to_chunks(bytes: Vec<u8>) -> Result<Vec<Box<IChunk>>, Box<Error>> {
-    let mut chunks: Vec<Box<IChunk>> = Vec::new();
-    let mut iter = bytes.into_iter().skip(PNG_HEADER_SIZE);
+fn parse_to_chunks(bytes: Vec<u8>) -> Result<Vec<GeneralChunk>, Box<Error>> {
+    let mut chunks = Vec::new();
+    let mut base_index: usize = PNG_HEADER_SIZE;
     loop {
-        let chunk_length = (iter.next().unwrap() as u32) * (2u32.pow(24)) +
-            (iter.next().unwrap() as u32) * (2u32.pow(16)) +
-            (iter.next().unwrap() as u32) * (2u32.pow(8)) +
-            (iter.next().unwrap() as u32);
-        let chunk_type = format!("{}{}{}{}",
-                                 iter.next().unwrap() as char,
-                                 iter.next().unwrap() as char,
-                                 iter.next().unwrap() as char,
-                                 iter.next().unwrap() as char);
-        let mut chunk_data = Vec::new();
-        for _ in 0..chunk_length {
-            chunk_data.push(iter.next().unwrap());
-        }
-        let chunk_crc = [
-            iter.next().unwrap(),
-            iter.next().unwrap(),
-            iter.next().unwrap(),
-            iter.next().unwrap()
-        ];
+        let chunk_length = (&bytes[base_index..base_index+4]).read_u32::<BigEndian>().unwrap() as usize;
+        let chunk_type = String::from(str::from_utf8(&bytes[base_index+4..base_index+8]).unwrap());
+        let chunk_data_slice = &bytes[(base_index+8)..(base_index+8+chunk_length)];
+        let chunk_crc = (&bytes[(base_index+chunk_length)..(base_index+chunk_length+4)]).read_u32::<BigEndian>().unwrap();
 
+        let mut chunk_data: Vec<u8> = Vec::new();
+        chunk_data.extend_from_slice(chunk_data_slice);
         let chunk = GeneralChunk {
             chunk_length: chunk_length,
             chunk_type: chunk_type,
             chunk_data: chunk_data,
             chunk_crc: chunk_crc,
         };
-        if chunk.chunk_type() == "IEND".to_string() {
-            chunks.push(Box::new(chunk));
+        base_index += 12 + chunk_length;
+
+        if chunk.chunk_type == "IEND".to_string() {
+            chunks.push(chunk);
             break;
         } else {
-            chunks.push(Box::new(chunk));
+            chunks.push(chunk);
         }
     }
     Ok(chunks)
