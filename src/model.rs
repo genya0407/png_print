@@ -1,4 +1,5 @@
 use byteorder::{BigEndian, ReadBytesExt};
+use std::error::Error;
 
 pub struct PNG {
     pub ihdr: IHDR,
@@ -18,6 +19,23 @@ pub struct GeneralChunk {
     pub chunk_type: String,
     pub chunk_data: Vec<u8>,
     pub chunk_crc: u32,
+}
+impl GeneralChunk {
+    pub fn to_ihdr(self) -> IHDR {
+        IHDR::new(self.chunk_length, &self.chunk_data, self.chunk_crc)
+    }
+
+    pub fn to_idat(self) -> IDAT {
+        IDAT {}
+    }
+
+    pub fn to_iend(self) -> IEND {
+        IEND {}
+    }
+
+    pub fn to_plte(self) -> PLTE {
+        PLTE {}
+    }
 }
 
 #[derive(Debug)]

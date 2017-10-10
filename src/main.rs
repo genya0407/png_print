@@ -20,8 +20,21 @@ fn main() {
     }
 }
 
-//fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<PNG, Box<Error>> {
-//}
+fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<(), Box<Error>> {
+    let mut ihdr_opt = None;
+    let mut others = Vec::new();
+    for chunk in chunks {
+        match chunk.chunk_type.as_ref() {
+            "IHDR" => {
+                ihdr_opt = Some(chunk.to_ihdr());
+            }
+            _ => {
+                others.push(chunk)
+            }
+        }
+    }
+    Ok(())
+}
 
 const PNG_HEADER_SIZE: usize = 8;
 fn parse_to_chunks(bytes: Vec<u8>) -> Result<Vec<GeneralChunk>, Box<Error>> {
