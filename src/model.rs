@@ -1,5 +1,4 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use std::error::Error;
 use std::error;
 use std::fmt;
 
@@ -28,16 +27,16 @@ impl error::Error for InvalidPngFileError {
 }
 
 #[derive(Debug)]
-pub struct PNG {
-    pub ihdr: IHDR,
-    pub plte_opt: Option<PLTE>,
-    pub idats: Vec<IDAT>,
-    pub iend: IEND,
+pub struct Png {
+    pub ihdr: Ihdr,
+    pub plte_opt: Option<Plte>,
+    pub idats: Vec<Idat>,
+    pub iend: Iend,
     pub others: Vec<GeneralChunk>
 }
 
 #[derive(Debug)]
-pub struct IHDR {
+pub struct Ihdr {
     pub width:              u32,
     pub height:             u32,
     pub bit_depth:          u8,
@@ -46,7 +45,7 @@ pub struct IHDR {
     pub filter_method:      u8,
     pub interlace_method:   u8,
 }
-impl IHDR {
+impl Ihdr {
     pub fn new(chunk_data: &[u8]) -> Self {
         Self {
             width: (&chunk_data[0..4]).read_u32::<BigEndian>().unwrap(),
@@ -61,24 +60,24 @@ impl IHDR {
 }
 
 #[derive(Debug)]
-pub struct PLTE_COLOR {
+pub struct PlteColor {
     pub red: u8,
     pub green: u8,
     pub blue: u8,
 }
-pub struct PLTE {
-    pub colors: Vec<PLTE_COLOR>
+pub struct Plte {
+    pub colors: Vec<PlteColor>
 }
-impl fmt::Debug for PLTE {
+impl fmt::Debug for Plte {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "PLTE: {} colors.", self.colors.len())
     }
 }
-impl PLTE {
+impl Plte {
     pub fn new(chunk_data: &[u8]) -> Self {
         let mut colors = Vec::new();
         for base_index in 0..(chunk_data.len() / 3) {
-            let color = PLTE_COLOR {
+            let color = PlteColor {
                 red:   chunk_data[base_index*3],
                 green: chunk_data[base_index*3+1],
                 blue:  chunk_data[base_index*3+2],
@@ -89,24 +88,24 @@ impl PLTE {
     }
 }
 
-pub struct IDAT {
+pub struct Idat {
     data: Vec<u8>,
 }
-impl fmt::Debug for IDAT {
+impl fmt::Debug for Idat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "IDAT: {} bytes.", self.data.len())
     }
 }
-impl IDAT {
+impl Idat {
     pub fn new(data: Vec<u8>) -> Self {
         Self { data: data }
     }
 }
 #[derive(Debug)]
-pub struct IEND {}
-impl IEND {
+pub struct Iend {}
+impl Iend {
     pub fn new() -> Self {
-        IEND {}
+        Iend {}
     }
 }
 
@@ -118,20 +117,20 @@ pub struct GeneralChunk {
     pub chunk_crc: u32,
 }
 impl GeneralChunk {
-    pub fn to_ihdr(self) -> IHDR {
-        IHDR::new(&self.chunk_data)
+    pub fn to_ihdr(self) -> Ihdr {
+        Ihdr::new(&self.chunk_data)
     }
 
-    pub fn to_idat(self) -> IDAT {
-        IDAT::new(self.chunk_data)
+    pub fn to_idat(self) -> Idat {
+        Idat::new(self.chunk_data)
     }
 
-    pub fn to_iend(self) -> IEND {
-        IEND::new()
+    pub fn to_iend(self) -> Iend {
+        Iend::new()
     }
 
-    pub fn to_plte(self) -> PLTE {
-        PLTE::new(&self.chunk_data)
+    pub fn to_plte(self) -> Plte {
+        Plte::new(&self.chunk_data)
     }
 }
 

@@ -19,7 +19,7 @@ fn main() {
     println!("{:?}", png);
 }
 
-fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<PNG, Box<Error>> {
+fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<Png, Box<Error>> {
     let mut ihdr_opt = None;
     let mut iend_opt = None;
     let mut plte_opt = None;
@@ -44,7 +44,7 @@ fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<PNG, Box<Error>> {
             }
         }
     }
-    let png = PNG {
+    let png = Png {
         ihdr: ihdr_opt.ok_or(InvalidPngFileError::new("IHDR".to_string()))?,
         plte_opt: plte_opt,
         idats: idats,
