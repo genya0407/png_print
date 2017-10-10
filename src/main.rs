@@ -14,26 +14,36 @@ use model::*;
 fn main() {
     let filename = args().nth(1).unwrap();
     let bytes = readfile(&filename).unwrap();
-    let chunks = parse_to_chunks(bytes);
-    for chunk in chunks.unwrap().into_iter() {
-        println!("{:?}", chunk.chunk_type);
-    }
+    let chunks = parse_to_chunks(bytes).unwrap();
+    let png = parse_to_png(chunks);
+    println!("{:?}", png);
 }
 
-fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<(), Box<Error>> {
+fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<PNG, Box<Error>> {
     let mut ihdr_opt = None;
+    let mut plte_opt = None;
     let mut others = Vec::new();
     for chunk in chunks {
         match chunk.chunk_type.as_ref() {
             "IHDR" => {
                 ihdr_opt = Some(chunk.to_ihdr());
             }
+            "PLTE" => {
+                plte_opt = Some(chunk.to_plte());
+            }
             _ => {
                 others.push(chunk)
             }
         }
     }
-    Ok(())
+    let png = PNG {
+        ihdr: ihdr_opt.ok_or(InvalidPngFileError::new("IHDR".to_string()))?,
+        plte_opt: plte_opt,
+        idats: Vec::new(),
+        iend: IEND {},
+        others: others,
+    };
+    Ok(png)
 }
 
 const PNG_HEADER_SIZE: usize = 8;
