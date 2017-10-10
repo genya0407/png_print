@@ -66,9 +66,13 @@ pub struct PLTE_COLOR {
     pub green: u8,
     pub blue: u8,
 }
-#[derive(Debug)]
 pub struct PLTE {
     pub colors: Vec<PLTE_COLOR>
+}
+impl fmt::Debug for PLTE {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PLTE: {} colors.", self.colors.len())
+    }
 }
 impl PLTE {
     pub fn new(chunk_data: &[u8]) -> Self {
@@ -85,8 +89,19 @@ impl PLTE {
     }
 }
 
-#[derive(Debug)]
-pub struct IDAT {}
+pub struct IDAT {
+    data: Vec<u8>,
+}
+impl fmt::Debug for IDAT {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "IDAT: {} bytes.", self.data.len())
+    }
+}
+impl IDAT {
+    pub fn new(data: Vec<u8>) -> Self {
+        Self { data: data }
+    }
+}
 #[derive(Debug)]
 pub struct IEND {}
 
@@ -103,7 +118,7 @@ impl GeneralChunk {
     }
 
     pub fn to_idat(self) -> IDAT {
-        IDAT {}
+        IDAT::new(self.chunk_data)
     }
 
     pub fn to_iend(self) -> IEND {
