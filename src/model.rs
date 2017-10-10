@@ -119,6 +119,20 @@ pub struct Color {
     pub green: u8,
     pub blue: u8,
 }
+impl Color {
+    pub fn new_vector(flatten_slice: &[u8]) -> Vec<Self> {
+        let mut colors = Vec::new();
+        for base_index in 0..(flatten_slice.len() / 3) {
+            let color = Self {
+                red:   flatten_slice[base_index*3],
+                green: flatten_slice[base_index*3+1],
+                blue:  flatten_slice[base_index*3+2],
+            };
+            colors.push(color);
+        }
+        colors
+    }
+}
 #[derive(Clone)]
 pub struct Plte {
     pub colors: Vec<Color>
@@ -130,16 +144,7 @@ impl fmt::Debug for Plte {
 }
 impl Plte {
     pub fn new(chunk_data: &[u8]) -> Self {
-        let mut colors = Vec::new();
-        for base_index in 0..(chunk_data.len() / 3) {
-            let color = Color {
-                red:   chunk_data[base_index*3],
-                green: chunk_data[base_index*3+1],
-                blue:  chunk_data[base_index*3+2],
-            };
-            colors.push(color);
-        }
-        Self { colors: colors }
+        Self { colors: Color::new_vector(chunk_data) }
     }
 }
 
