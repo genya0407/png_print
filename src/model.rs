@@ -27,6 +27,45 @@ impl error::Error for InvalidPngFileError {
     }
 }
 
+pub struct ImageColor {
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+}
+impl IColor for ImageColor {
+    fn red(&self)   -> u8 { self.red }
+    fn green(&self) -> u8 { self.green }
+    fn blue(&self)  -> u8 { self.blue }
+}
+pub struct Image {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<Box<IColor>>,
+}
+impl Image {
+    pub fn half_half(&self) -> Self {
+        let n = 2;
+
+        let mut new_pixels: Vec<Box<IColor>> = Vec::new();
+        for h in (0..self.height).filter(|i| i % n == 0) {
+            for w in (0..self.width).filter(|i| i % n == 0) {
+                let color = &self.pixels[(h * self.width + w) as usize];
+                let image_color = ImageColor { red: color.red(), green: color.green(), blue: color.blue() };
+                new_pixels.push(Box::new(image_color));
+            }
+        }
+
+        let new_width = self.width / n;
+        let new_height = self.height / n;
+
+        Self {
+            width: new_width,
+            height: new_height,
+            pixels: new_pixels,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Png {
     pub ihdr: Ihdr,
@@ -36,7 +75,7 @@ pub struct Png {
     pub others: Vec<GeneralChunk>
 }
 impl Png {
-    pub fn decompress(&self) -> Result<Vec<u8>, String> {
+    fn decompress(&self) -> Result<Vec<u8>, String> {
         let mut concatenated_data = Vec::new();
         for idat in self.idats.iter() {
             concatenated_data.extend(idat.compressed_data.clone());
@@ -44,7 +83,7 @@ impl Png {
         inflate_bytes(concatenated_data.as_slice())
     }
     
-    pub fn decompress_with_color(&self) -> Result<Vec<Box<IColor>>, String> {
+    fn decompress_with_color(&self) -> Result<Vec<Box<IColor>>, String> {
         let plte = self.plte_opt.clone().ok_or("PLTE chunk doesn't exist!")?;
         let decompressed_bits = self.decompress()?;
         let mut colors: Vec<Box<IColor>> = Vec::new();
@@ -53,9 +92,15 @@ impl Png {
         }
         Ok(colors)
     }
+
+    pub fn to_image(&self) -> Result<Image, String> {
+        let pixels = self.decompress_with_color()?;
+        let image = Image { width: self.ihdr.width, height: self.ihdr.height, pixels: pixels };
+        Ok(image)
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Ihdr {
     pub width:              u32,
     pub height:             u32,
