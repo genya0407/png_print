@@ -1,5 +1,6 @@
 extern crate byteorder;
 extern crate inflate;
+extern crate deflate;
 extern crate ansi_term;
 
 use std::error::Error;
@@ -20,7 +21,12 @@ fn main() {
     let bytes = readfile(&filename).unwrap();
     let chunks = parse_to_chunks(bytes).unwrap();
     let png = parse_to_png(chunks).unwrap();
-    show_on_terminal(png);
+    let image = png.to_image().unwrap();//.half_half();
+    println!("{}", image.width);
+    println!("{}", image.height);
+    println!("{}", image.width * image.height);
+    println!("{}", image.pixels.len() as u32);
+    show_on_terminal(image);
 }
 
 fn parse_to_png(chunks: Vec<GeneralChunk>) -> Result<Png, Box<Error>> {

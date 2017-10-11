@@ -2,8 +2,7 @@ use ansi_term::Colour::RGB;
 use model::*;
 use std::io::{stdout, Write, BufWriter};
 
-pub fn show_on_terminal(png: Png) -> Result<(), String> {
-    let image = png.to_image()?.half_half();
+pub fn show_on_terminal(image: Image) {
     let mut terminal_image = String::new();
     for h in 0..image.height {
         for w in 0..image.width {
@@ -15,5 +14,4 @@ pub fn show_on_terminal(png: Png) -> Result<(), String> {
     let out = stdout();
     let mut out = BufWriter::new(out.lock());
     out.write_all(terminal_image.as_bytes()).unwrap();
-    Ok(())
 }

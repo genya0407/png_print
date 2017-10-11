@@ -2,6 +2,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use std::error;
 use std::fmt;
 use inflate::inflate_bytes;
+use deflate::deflate_bytes;
 
 #[derive(Debug)]
 pub struct InvalidPngFileError {
@@ -27,6 +28,7 @@ impl error::Error for InvalidPngFileError {
     }
 }
 
+#[derive(Debug)]
 pub struct Image {
     pub width: u32,
     pub height: u32,
@@ -34,7 +36,7 @@ pub struct Image {
 }
 impl Image {
     pub fn half_half(&self) -> Self {
-        let n = 2;
+        let n = 1;
 
         let mut new_pixels: Vec<Color> = Vec::new();
         for h in (0..self.height).filter(|i| i % n == 0) {
@@ -65,21 +67,27 @@ pub struct Png {
 }
 impl Png {
     fn decompress(&self) -> Result<Vec<u8>, String> {
-        let mut concatenated_data = Vec::new();
+        let mut decompressed_data = Vec::new();
         for idat in self.idats.iter() {
-            concatenated_data.extend(idat.compressed_data.clone());
+            decompressed_data.extend(inflate_bytes(&idat.compressed_data)?);
         }
-        inflate_bytes(concatenated_data.as_slice())
+        Ok(decompressed_data)
     }
-    
+
     fn decompress_with_color(&self) -> Result<Vec<Color>, String> {
-        let plte = self.plte_opt.clone().ok_or("PLTE chunk doesn't exist!")?;
         let decompressed_bits = self.decompress()?;
-        let mut colors: Vec<Color> = Vec::new();
-        for decompressed_bit in decompressed_bits {
-            colors.push(plte.colors[decompressed_bit as usize].clone());
+        match self.plte_opt {
+            Some(ref plte) => {
+                let mut colors: Vec<Color> = Vec::new();
+                for decompressed_bit in decompressed_bits {
+                    colors.push(plte.colors[decompressed_bit as usize].clone());
+                }
+                Ok(colors)
+            },
+            None => {
+                Ok(Color::new_vector(&decompressed_bits, 4))
+            }
         }
-        Ok(colors)
     }
 
     pub fn to_image(&self) -> Result<Image, String> {
@@ -120,13 +128,14 @@ pub struct Color {
     pub blue: u8,
 }
 impl Color {
-    pub fn new_vector(flatten_slice: &[u8]) -> Vec<Self> {
+    pub fn new_vector(flatten_slice: &[u8], step: usize) -> Vec<Self> {
         let mut colors = Vec::new();
-        for base_index in 0..(flatten_slice.len() / 3) {
+        println!("{:?}", flatten_slice);
+        for base_index in 0..(flatten_slice.len() / step) {
             let color = Self {
-                red:   flatten_slice[base_index*3],
-                green: flatten_slice[base_index*3+1],
-                blue:  flatten_slice[base_index*3+2],
+                red:   flatten_slice[base_index*step],
+                green: flatten_slice[base_index*step+1],
+                blue:  flatten_slice[base_index*step+2],
             };
             colors.push(color);
         }
@@ -144,7 +153,7 @@ impl fmt::Debug for Plte {
 }
 impl Plte {
     pub fn new(chunk_data: &[u8]) -> Self {
-        Self { colors: Color::new_vector(chunk_data) }
+        Self { colors: Color::new_vector(chunk_data, 3) }
     }
 }
 
