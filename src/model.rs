@@ -110,7 +110,7 @@ pub struct Ihdr {
 impl Ihdr {
     pub fn new(chunk_data: &[u8]) -> Self {
         Self {
-            width: (&chunk_data[0..4]).read_u32::<BigEndian>().unwrap(),
+            width: (&chunk_data[0..4]).read_u32::<BigEndian>().unwrap()+1,
             height: (&chunk_data[4..8]).read_u32::<BigEndian>().unwrap(),
             bit_depth: chunk_data[8],
             color_type: chunk_data[9],
