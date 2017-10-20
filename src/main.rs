@@ -1,6 +1,5 @@
 extern crate byteorder;
 extern crate inflate;
-extern crate deflate;
 extern crate ansi_term;
 
 use std::error::Error;

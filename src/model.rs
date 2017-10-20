@@ -2,7 +2,6 @@ use byteorder::{BigEndian, ReadBytesExt};
 use std::error;
 use std::fmt;
 use inflate::inflate_bytes;
-use deflate::deflate_bytes;
 
 #[derive(Debug)]
 pub struct InvalidPngFileError {
