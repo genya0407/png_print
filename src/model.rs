@@ -29,30 +29,24 @@ impl error::Error for InvalidPngFileError {
 
 #[derive(Debug)]
 pub struct Image {
-    pub width: u32,
-    pub height: u32,
+    pub width: usize,
+    pub height: usize,
     pub pixels: Vec<Color>,
 }
 impl Image {
-    pub fn half_half(&self) -> Self {
-        let n = 1;
+    pub fn scanlines(&self) -> Vec<Vec<Color>> {
+        let effective_width = self.pixels.len() / self.height;
+        let mut reversed_pixels = self.pixels.clone();
+        reversed_pixels.reverse();
 
-        let mut new_pixels: Vec<Color> = Vec::new();
-        for h in (0..self.height).filter(|i| i % n == 0) {
-            for w in (0..self.width).filter(|i| i % n == 0) {
-                let color = &self.pixels[(h * self.width + w) as usize];
-                new_pixels.push(color.clone());
-            }
+        let mut reversed_scanlines: Vec<Vec<Color>> = Vec::new();
+        for scanline_nth in 0..self.height {
+            let scanline_start      = scanline_nth * effective_width;
+            let next_scanline_start = scanline_start + effective_width;
+            let mut scanline = reversed_pixels[scanline_start..next_scanline_start].to_vec();
+            reversed_scanlines.push(scanline);
         }
-
-        let new_width = self.width / n;
-        let new_height = self.height / n;
-
-        Self {
-            width: new_width,
-            height: new_height,
-            pixels: new_pixels,
-        }
+        reversed_scanlines
     }
 }
 
@@ -91,7 +85,7 @@ impl Png {
 
     pub fn to_image(&self) -> Result<Image, String> {
         let pixels = self.decompress_with_color()?;
-        let image = Image { width: self.ihdr.width, height: self.ihdr.height, pixels: pixels };
+        let image = Image { width: self.ihdr.width as usize, height: self.ihdr.height as usize, pixels: pixels };
         Ok(image)
     }
 }
@@ -109,7 +103,7 @@ pub struct Ihdr {
 impl Ihdr {
     pub fn new(chunk_data: &[u8]) -> Self {
         Self {
-            width: (&chunk_data[0..4]).read_u32::<BigEndian>().unwrap()+1,
+            width: (&chunk_data[0..4]).read_u32::<BigEndian>().unwrap(),
             height: (&chunk_data[4..8]).read_u32::<BigEndian>().unwrap(),
             bit_depth: chunk_data[8],
             color_type: chunk_data[9],
@@ -129,7 +123,6 @@ pub struct Color {
 impl Color {
     pub fn new_vector(flatten_slice: &[u8], step: usize) -> Vec<Self> {
         let mut colors = Vec::new();
-        println!("{:?}", flatten_slice);
         for base_index in 0..(flatten_slice.len() / step) {
             let color = Self {
                 red:   flatten_slice[base_index*step],

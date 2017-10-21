@@ -4,9 +4,8 @@ use std::io::{stdout, Write, BufWriter};
 
 pub fn show_on_terminal(image: Image) {
     let mut terminal_image = String::new();
-    for h in 0..image.height {
-        for w in 0..image.width {
-            let color = &image.pixels[(h * image.width + w) as usize];
+    for scanline in image.scanlines() {
+        for color in scanline {
             terminal_image += &format!("{}", RGB(color.red, color.green, color.blue).paint("■"));
         }
         terminal_image += "\n";
