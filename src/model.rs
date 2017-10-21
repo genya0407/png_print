@@ -88,19 +88,26 @@ impl Png {
             None => {
                 let data_length = decompressed_bits.len();
                 let scanline_width = data_length / self.height();
-                let mut colors = Vec::new();
+                let scanlines: Vec<Vec<Color>> = Vec::new();
                 for scanline_nth in 0..self.height() {
                     let scanline_start_at = scanline_nth * scanline_width;
                     let next_scanline_start_at = (scanline_nth + 1) * scanline_width;
-                    let scanline = &decompressed_bits[scanline_start_at..next_scanline_start_at];
-                    let color_part_of_scanline = &scanline[1..];
-                    let filter_method = scanline[0];
-                    let colors_of_scanline = match filter_method {
-                        0 => Color::new_vector(color_part_of_scanline, 4),
-                        1 => Color::with_sub(color_part_of_scanline),
-                        _ => return Err("not implemented filter method!".to_string()),
+                    let scanline_bytes = &decompressed_bits[scanline_start_at..next_scanline_start_at];
+                    let color_part_of_scanline_bytes = &scanline_bytes[1..];
+                    let filter_method = scanline_bytes[0];
+                    let scanline: Vec<Color> = match filter_method {
+                        0 => Color::new_vector(color_part_of_scanline_bytes, 4),
+                        1 => Color::with_sub(color_part_of_scanline_bytes),
+                        3 => Color::with_average(
+                               scanlines.get(scanline_nth - 1).map(|sl| Color::to_raw_scanline(sl)),
+                               color_part_of_scanline_bytes
+                             ),
+                        n => return Err(format!("not implemented filter method: {}", n)),
                     };
-                    colors.extend(colors_of_scanline);
+                }
+                let mut colors: Vec<Color> = Vec::new();
+                for scanline in scanlines.into_iter() {
+                    colors.extend(scanline);
                 }
                 Ok(colors)
             }
@@ -146,6 +153,18 @@ pub struct Color {
     pub alpha: u8,
 }
 impl Color {
+    pub fn to_raw_bytes(&self) -> Vec<u8> {
+        vec![self.red, self.green, self.blue, self.alpha]
+    }
+
+    pub fn to_raw_scanline(colors: &[Self]) -> Vec<u8> {
+        let mut raws = Vec::new();
+        for color in colors.iter() {
+            raws.extend(color.to_raw_bytes());
+        }
+        raws
+    }
+
     pub fn new_vector(flatten_slice: &[u8], step: usize) -> Vec<Self> {
         let mut colors = Vec::new();
         for base_index in 0..(flatten_slice.len() / step) {
@@ -164,9 +183,21 @@ impl Color {
         let bpp = 4;
         let mut raws = Vec::new();
         for x in 0..scanline.len() {
-            let sub_x = scanline[x];
             let raw_x_bpp = if x < bpp { 0 } else { raws[x - bpp] };
-            let raw_x: u8 = sub_x.wrapping_add(raw_x_bpp);
+            let raw_x: u8 = scanline[x].wrapping_add(raw_x_bpp);
+            raws.push(raw_x);
+        }
+        Self::new_vector(&raws, 4)
+    }
+
+    pub fn with_average(prior_scanline_opt: Option<Vec<u8>>, scanline: &[u8]) -> Vec<Self> {
+        let bpp = 4;
+        let prior_scanline = prior_scanline_opt.unwrap_or(vec![0; scanline.len()]);
+        let mut raws: Vec<u8> = Vec::new();
+        for x in 0..scanline.len() {
+            let prior_x = prior_scanline[x];
+            let raw_x_bpp = if x < bpp { 0 } else { raws[x - bpp] };
+            let raw_x = scanline[x].wrapping_add(raw_x_bpp.wrapping_add(prior_x)/2);
             raws.push(raw_x);
         }
         Self::new_vector(&raws, 4)
