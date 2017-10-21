@@ -6,7 +6,12 @@ pub fn show_on_terminal(image: Image) {
     let mut terminal_image = String::new();
     for scanline in image.scanlines() {
         for color in scanline {
-            terminal_image += &format!("{}", RGB(color.red, color.green, color.blue).paint("■"));
+            let pixel_str = if color.alpha == 255 {
+                format!("{}", RGB(color.red, color.green, color.blue).paint("@"))
+            } else {
+                " ".to_string()
+            };
+            terminal_image += &pixel_str;
         }
         terminal_image += "\n";
     }

@@ -143,6 +143,7 @@ pub struct Color {
     pub red: u8,
     pub green: u8,
     pub blue: u8,
+    pub alpha: u8,
 }
 impl Color {
     pub fn new_vector(flatten_slice: &[u8], step: usize) -> Vec<Self> {
@@ -152,6 +153,7 @@ impl Color {
                 red:   flatten_slice[base_index*step],
                 green: flatten_slice[base_index*step+1],
                 blue:  flatten_slice[base_index*step+2],
+                alpha: flatten_slice[base_index*step+3],
             };
             colors.push(color);
         }
