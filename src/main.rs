@@ -21,8 +21,6 @@ fn main() {
     let chunks = parse_to_chunks(bytes).unwrap();
     let png = parse_to_png(chunks).unwrap();
     let image = png.to_image().unwrap();
-    println!("{:?}", png.ihdr);
-    println!("{:?}", image.pixels.len());
     show_on_terminal(image);
 }
 

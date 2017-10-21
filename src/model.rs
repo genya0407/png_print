@@ -59,7 +59,15 @@ pub struct Png {
     pub others: Vec<GeneralChunk>
 }
 impl Png {
-    fn decompress(&self) -> Result<Vec<u8>, String> {
+    pub fn height(&self) -> usize {
+        self.ihdr.height as usize
+    }
+
+    pub fn width(&self) -> usize {
+        self.ihdr.width as usize
+    }
+
+    pub fn decompress(&self) -> Result<Vec<u8>, String> {
         let mut decompressed_data = Vec::new();
         for idat in self.idats.iter() {
             decompressed_data.extend(inflate_bytes(&idat.compressed_data)?);
@@ -78,7 +86,23 @@ impl Png {
                 Ok(colors)
             },
             None => {
-                Ok(Color::new_vector(&decompressed_bits, 4))
+                let data_length = decompressed_bits.len();
+                let scanline_width = data_length / self.height();
+                let mut colors = Vec::new();
+                for scanline_nth in 0..self.height() {
+                    let scanline_start_at = scanline_nth * scanline_width;
+                    let next_scanline_start_at = (scanline_nth + 1) * scanline_width;
+                    let scanline = &decompressed_bits[scanline_start_at..next_scanline_start_at];
+                    let color_part_of_scanline = &scanline[1..];
+                    let filter_method = scanline[0];
+                    let colors_of_scanline = match filter_method {
+                        0 => Color::new_vector(color_part_of_scanline, 4),
+                        1 => Color::with_sub(color_part_of_scanline),
+                        _ => return Err("not implemented filter method!".to_string()),
+                    };
+                    colors.extend(colors_of_scanline);
+                }
+                Ok(colors)
             }
         }
     }
@@ -132,6 +156,18 @@ impl Color {
             colors.push(color);
         }
         colors
+    }
+
+    pub fn with_sub(scanline: &[u8]) -> Vec<Self> {
+        let bpp = 4;
+        let mut raws = Vec::new();
+        for x in 0..scanline.len() {
+            let sub_x = scanline[x];
+            let raw_x_bpp = if x < bpp { 0 } else { raws[x - bpp] };
+            let raw_x: u8 = sub_x.wrapping_add(raw_x_bpp);
+            raws.push(raw_x);
+        }
+        Self::new_vector(&raws, 4)
     }
 }
 #[derive(Clone)]
