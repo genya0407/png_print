@@ -16,11 +16,11 @@ use model::*;
 use terminal::show_on_terminal;
 
 fn main() {
-    let filename = args().nth(1).unwrap();
-    let bytes = readfile(&filename).unwrap();
-    let chunks = parse_to_chunks(bytes).unwrap();
-    let png = parse_to_png(chunks).unwrap();
-    let image = png.to_image().unwrap();
+    let filename = args().nth(1).expect("You should specify filename!");
+    let bytes = readfile(&filename).expect("Cannot read file!");
+    let chunks = parse_to_chunks(bytes).expect("Cannot parse file!");
+    let png = parse_to_png(chunks).expect("Invalid png file!");
+    let image = png.to_image().expect("Invalid png file!");
     show_on_terminal(image);
 }
 
